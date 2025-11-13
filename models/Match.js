@@ -25,6 +25,15 @@ const matchSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  creator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Referencia al modelo User
+    required: true
+  },
+  participants: [{ // Un array de IDs de los usuarios que se han unido
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User' 
+  }]
 }, { timestamps: true });
 
 const Match = mongoose.model('Match', matchSchema);
