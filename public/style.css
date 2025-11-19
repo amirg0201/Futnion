@@ -82,7 +82,7 @@ button:hover {
 
 /* Clase para ocultar un formulario */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 /* ... (tus estilos de login) ... */
@@ -124,4 +124,191 @@ button:hover {
 
 #logout-btn:hover {
     background-color: #c82333;
+}
+
+#dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f0f2f5;
+    padding-bottom: 1rem;
+}
+
+#create-match-form {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+#create-match-form h3 {
+    margin-top: 0;
+    text-align: left;
+}
+#create-match-form button {
+    background-color: #28a745; /* Botón verde para crear */
+}
+#create-match-form button:hover {
+    background-color: #218838;
+}
+
+.divider {
+    border: none;
+    border-top: 2px solid #f0f2f5;
+    margin: 1.5rem 0;
+}
+
+/* ===== ESTILOS PARA TUS PARTIDOS ===== */
+
+/* Etiqueta para "Mío" */
+.creator-tag {
+    background-color: #007bff; /* Azul */
+    color: white;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Estilo para la tarjeta "Mío" */
+.match-card.my-match {
+    border-left: 5px solid #007bff; /* Borde izquierdo azul */
+    background-color: #f8f9fa;
+}
+
+/* Estilo para el contenedor de login (para que siga centrado) */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* El contenedor principal de la App (ocupa más espacio) */
+#app-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem 1rem;
+    /* Quitamos el centrado vertical para que fluya */
+    align-self: flex-start; 
+}
+
+/* --- Barra de Navegación --- */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: #ffffff;
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.app-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+.nav-btn {
+    padding: 8px 12px;
+    margin-left: 10px;
+    border: none;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+.nav-btn:hover {
+    background-color: #f0f2f5;
+}
+.nav-btn.active {
+    color: #1877f2;
+    background-color: #e7f3ff;
+}
+.nav-btn.logout {
+    background-color: #fbebeb;
+    color: #dc3545;
+}
+
+/* --- Contenido de las Páginas --- */
+main {
+    background-color: #ffffff;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 1.5rem;
+}
+.app-page h2 {
+    margin-top: 0;
+}
+
+/* Estilos para que el formulario de creación se vea bien */
+#create-match-form label {
+    display: block;
+    margin-bottom: 5px;
+    color: #606770;
+    font-weight: bold;
+}
+#create-match-form input {
+    width: 100%;
+}
+
+/* Clase para ocultar (la usaremos mucho) */
+.hidden {
+    display: none;
+}
+
+/* ... (todos tus estilos anteriores) ... */
+
+/* --- Estilos del Modal --- */
+
+/* Fondo oscuro semitransparente */
+.modal-backdrop {
+    position: fixed; /* Se queda fijo en la pantalla */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Oscuro con 60% opacidad */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100; /* Se pone encima de todo */
+}
+
+/* El contenedor blanco del contenido */
+.modal-content {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Botón de cerrar (X) */
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #aaa;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+.modal-close-btn:hover {
+    color: #333;
+}
+
+/* Contenido del modal (lista de inscritos) */
+#modal-body h3 {
+    margin-top: 0;
+}
+#modal-body p {
+    margin: 5px 0;
+    line-height: 1.4;
 }

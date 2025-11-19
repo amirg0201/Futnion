@@ -35,14 +35,15 @@ exports.getMatches = async (req, res) => {
 exports.getMatchById = async (req, res) => {
     try {
         const match = await Match.findById(req.params.id)
-            .populate('creator', 'username fullName');
+            .populate('creator', 'username fullName') // Ya tenías este
+            .populate('participants', 'username');     // <-- ¡ASEGÚRATE DE AÑADIR ESTE!
             
         if (!match) {
             return res.status(404).json({ msg: 'Partido no encontrado' });
         }
         res.status(200).json(match);
     } catch (error) {
-        res.status(500).json({ msg: 'Hubo un error al obtener el partido', error: error.message });
+        // ...
     }
 };
 

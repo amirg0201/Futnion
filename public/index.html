@@ -9,15 +9,16 @@
 <body>
 
     <div class="form-container">
-        <form id="login-form">
+        
+        <form id="login-form" autocomplete="off">
             <h2>Iniciar Sesión ⚽︎</h2>
             <div class="input-group">
                 <label for="login-email">Email</label>
-                <input type="email" id="login-email" name="email" required>
+                <input type="email" id="login-email" name="email" required autocomplete="off">
             </div>
             <div class="input-group">
                 <label for="login-password">Contraseña</label>
-                <input type="password" id="login-password" name="password" required>
+                <input type="password" id="login-password" name="password" required autocomplete="off">
             </div>
             <button type="submit">Entrar</button>
             <p class="form-switcher">
@@ -52,6 +53,61 @@
                 ¿Ya tienes cuenta? <a href="#" id="show-login-link">Inicia sesión</a>
             </p>
         </form>
+    </div>
+
+    <div id="app-container" class="hidden">
+        
+        <header class="app-header">
+            <h1>Futnion ⚽︎</h1>
+            <nav>
+                <button id="nav-home" class="nav-btn active">Partidos</button>
+                <button id="nav-create" class="nav-btn">Crear Partido</button>
+                <button id="nav-logout" class="nav-btn logout">Cerrar Sesión</button>
+            </nav>
+        </header>
+
+        <main>
+            <section id="home-page" class="app-page">
+                <h2>Partidos Disponibles</h2>
+                <div id="matches-list">Cargando...</div>
+            </section>
+            
+            <section id="create-page" class="app-page hidden">
+                <h2>Crear un Nuevo Partido</h2>
+                
+                <form id="create-match-form">
+                    <div class="input-group">
+                        <label for="match-name">Nombre del Partido</label>
+                        <input type="text" id="match-name" placeholder="ej: Fut 5 Jueves" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="match-location">Lugar</label>
+                        <input type="text" id="match-location" placeholder="ej: Canchas El Sol" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="match-date">Fecha y Hora</label>
+                        <input type="datetime-local" id="match-date" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="match-players-side">Jugadores por lado</label>
+                        <input type="number" id="match-players-side" placeholder="ej: 5" min="1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="match-required">Jugadores que faltan</label>
+                        <input type="number" id="match-required" placeholder="ej: 3" min="1" required>
+                    </div>
+                    <button type="submit">Crear Partido</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-container" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <button id="modal-close" class="modal-close-btn">&times;</button>
+            <div id="modal-body">
+                </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
