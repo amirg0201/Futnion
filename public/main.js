@@ -155,116 +155,117 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // FUNCIÓN PARA CREAR PARTIDO
   async function createMatch(e) {
-    e.preventDefault();
-    
-    const token = localStorage.getItem('token');
-    const currentUserId = localStorage.getItem('userId'); 
-    
-    if (!token || !currentUserId) return alert('Tu sesión ha expirado. Intenta iniciar sesión de nuevo.');
+      e.preventDefault();
+      
+      const token = localStorage.getItem('token');
+      const currentUserId = localStorage.getItem('userId');
+      
+      if (!token || !currentUserId) return alert('Tu sesión ha expirado.');
 
-    // 1. Recolección y Conversión de Datos
-    const matchData = {
-      MatchName: document.getElementById('match-name').value,
-      LocationName: document.getElementById('match-location').value,
-      MatchDate: document.getElementById('match-date').value,
-      // CONVERSIÓN CRÍTICA: De texto a número decimal
-      MatchDuration: parseFloat(document.getElementById('match-duration').value),
-      PlayersBySide: parseInt(document.getElementById('match-players-side').value),
-      requiredPlayers: parseInt(document.getElementById('match-required').value)
-    };
+      // 1. Datos del Formulario
+      const matchData = {
+        MatchName: document.getElementById('match-name').value,
+        LocationName: document.getElementById('match-location').value,
+        MatchDate: document.getElementById('match-date').value,
+        MatchDuration: parseFloat(document.getElementById('match-duration').value),
+        PlayersBySide: parseInt(document.getElementById('match-players-side').value),
+        requiredPlayers: parseInt(document.getElementById('match-required').value)
+      };
 
-    // Validación simple
-    if (isNaN(matchData.MatchDuration) || matchData.MatchDuration <= 0) {
-      return alert("Por favor ingresa una duración válida (ej: 1.5 para hora y media).");
-    }
+      if (isNaN(matchData.MatchDuration) || matchData.MatchDuration <= 0) {
+        return alert("Ingresa una duración válida (ej: 1 o 1.5).");
+      }
 
-    try {
-      // --- INICIO LÓGICA DE CONFLICTO ---
-      // A. Obtener partidos para verificar horario
-      const allMatchesResponse = await getMatches();
-      if (allMatchesResponse.ok) {
-        const allMatches = await allMatchesResponse.json();
+      try {
+        // --- VALIDACIÓN DE CONFLICTO ---
+        console.log("--- INICIANDO VALIDACIÓN DE CONFLICTO (CREAR) ---");
         
-        // B. Filtrar solo los partidos donde el usuario ya está inscrito
-        const userJoinedMatches = allMatches.filter(m => 
+        // A. Traer todos los partidos
+        const allMatchesResponse = await getMatches();
+        if (!allMatchesResponse.ok) throw new Error('No se pudieron verificar los horarios');
+        const allMatches = await allMatchesResponse.json();
+
+        // B. Filtrar MIS partidos (donde ya estoy inscrito)
+        const myMatches = allMatches.filter(m => 
           m.participants.some(p => p && p._id === currentUserId)
         );
-        
-        // C. Calcular ventana del NUEVO partido
-        // (Asegúrate de tener la función auxiliar calculateMatchWindow en tu archivo)
-        const newMatchWindow = calculateMatchWindow(matchData); 
 
-        // D. Comparar con cada partido existente
-        for (const existingMatch of userJoinedMatches) {
+        // C. Calcular ventana del NUEVO partido
+        const newWindow = calculateMatchWindow(matchData);
+        console.log(`NUEVO INTENTO: ${newWindow.name} | ${newWindow.humanStart} - ${newWindow.humanEnd}`);
+
+        // D. Comparar con mis partidos existentes
+        for (const existingMatch of myMatches) {
           const existingWindow = calculateMatchWindow(existingMatch);
-          
-          if (isOverlapping(existingWindow, newMatchWindow)) {
-            alert(`Conflicto de horario: Este nuevo partido se solapa con "${existingMatch.MatchName}".`);
-            return; // Detiene la creación
+          console.log(`COMPARANDO CON: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
+
+          if (isOverlapping(existingWindow, newWindow)) {
+            console.warn("❌ CRUCE DETECTADO");
+            alert(`⚠️ CONFLICTO: Ya tienes el partido "${existingMatch.MatchName}" a esa hora (${existingWindow.humanStart} - ${existingWindow.humanEnd}).`);
+            return; // DETIENE TODO
           }
         }
+        console.log("✅ Horario libre. Creando...");
+        // --- FIN VALIDACIÓN ---
+
+        // 2. Crear si no hay conflicto
+        const response = await createMatchService(matchData); 
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.msg || 'Error al crear');
+
+        alert('¡Partido creado con éxito!');
+        createMatchForm.reset();
+        document.getElementById('nav-home').click(); // Volver al home
+
+      } catch (error) {
+        alert(error.message);
       }
-      // --- FIN LÓGICA DE CONFLICTO ---
-
-      // 2. Si no hay conflicto, enviamos al servidor
-      const response = await createMatchService(matchData); 
-      const data = await response.json();
-      
-      if (!response.ok) throw new Error(data.msg || 'Error al crear el partido');
-
-      alert('¡Partido creado con éxito!');
-      createMatchForm.reset();
-      
-      navHome.click(); 
-    } catch (error) {
-      alert(error.message);
-    }
   }
 
-  // FUNCIÓN PARA UNIRSE A PARTIDO (Usa el servicio)
+  // FUNCIÓN PARA UNIRSE A PARTIDO
   async function joinMatch(matchId) {
     const token = localStorage.getItem('token');
-    const currentUserId = localStorage.getItem('userId'); 
+    const currentUserId = localStorage.getItem('userId');
     
     if (!token || !currentUserId) {
-      alert('Tu sesión ha expirado, por favor inicia sesión de nuevo.');
+      alert('Tu sesión ha expirado, inicia sesión de nuevo.');
       return;
     }
 
     try {
-        // --- INICIO LÓGICA DE CONFLICTO ---
+        // --- VALIDACIÓN DE CONFLICTO ---
+        console.log("--- INICIANDO VALIDACIÓN DE CONFLICTO (UNIRSE) ---");
+
         const allMatchesResponse = await getMatches();
         if (allMatchesResponse.ok) {
           const allMatches = await allMatchesResponse.json();
 
-          // A. Obtener el partido objetivo y mis partidos
-          const newMatchToJoin = allMatches.find(m => m._id === matchId);
-          const userJoinedMatches = allMatches.filter(m => 
+          // A. Buscar el partido objetivo y MIS partidos
+          const matchToJoin = allMatches.find(m => m._id === matchId);
+          const myMatches = allMatches.filter(m => 
             m.participants.some(p => p && p._id === currentUserId)
           );
 
-          if (newMatchToJoin) {
-              const newMatchWindow = calculateMatchWindow(newMatchToJoin);
-              console.log(`🔵 Intentando unirse a: ${newMatchToJoin.MatchName}`);
-              console.log(`   Horario: ${newMatchWindow.start.toLocaleTimeString()} - ${newMatchWindow.end.toLocaleTimeString()}`);
+          if (matchToJoin) {
+            const targetWindow = calculateMatchWindow(matchToJoin);
+            console.log(`INTENTO UNIRME A: ${targetWindow.name} | ${targetWindow.humanStart} - ${targetWindow.humanEnd}`);
 
-              // B. Verificar cruces
-              for (const existingMatch of userJoinedMatches) {
-                const existingWindow = calculateMatchWindow(existingMatch);
-                
-                console.log(`🔸 Comparando con: ${existingMatch.MatchName}`);
-                console.log(`   Horario: ${existingWindow.start.toLocaleTimeString()} - ${existingWindow.end.toLocaleTimeString()}`);
+            for (const existingMatch of myMatches) {
+              const existingWindow = calculateMatchWindow(existingMatch);
+              console.log(`REVISANDO MI AGENDA: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
 
-                if (isOverlapping(existingWindow, newMatchWindow)) {
-                  console.error("❌ ¡CONFLICTO DETECTADO!");
-                  alert(`No puedes unirte. El horario choca con tu partido "${existingMatch.MatchName}".`);
-                  return; // Cancela la unión
-                }
+              if (isOverlapping(existingWindow, targetWindow)) {
+                console.warn("❌ CRUCE DETECTADO");
+                alert(`⚠️ IMPOSIBLE UNIRSE: Choca con tu partido "${existingMatch.MatchName}" (${existingWindow.humanStart} - ${existingWindow.humanEnd}).`);
+                return; // DETIENE TODO
               }
             }
+          }
         }
-        // --- FIN LÓGICA DE CONFLICTO ---
+        // --- FIN VALIDACIÓN ---
 
         const response = await joinMatchAPI(matchId);
         const data = await response.json();
@@ -276,7 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
           alert(`Error: ${data.msg}`);
         }
     } catch (error) {
-      alert('Error de red al intentar unirse.');
+      alert('Error al intentar unirse.');
+      console.error(error);
     }
   }
 
@@ -381,40 +383,51 @@ async function handleDeleteMatch(matchId) {
 
 });
 
+// --- FUNCIONES AUXILIARES PARA DETECCIÓN DE CONFLICTOS ---
+
 /**
- * Calcula el inicio y fin de un partido.
+ * Calcula el inicio y fin de un partido en Milisegundos.
  */
 function calculateMatchWindow(match) {
-    const start = new Date(match.MatchDate);
+    // 1. Obtener fecha de inicio
+    const startDate = new Date(match.MatchDate);
+    const startMs = startDate.getTime();
+
+    // 2. Obtener duración (dando prioridad al input si es un partido nuevo)
+    // Nota: 'match-duration' es el ID del input en el formulario
+    let durationHours = match.MatchDuration;
     
-    // 1. INTENTAR OBTENER LA DURACIÓN (Buscamos en todos los lugares posibles)
-    // Prioridad: 1. Schema Nuevo, 2. Schema Viejo, 3. Input del Formulario
-    let rawDuration = match.MatchDuration || match.DuracionJuego || document.getElementById('match-duration')?.value;
-    
-    // 2. CONVERTIR A NÚMERO
-    let durationHours = parseFloat(rawDuration);
-    
-    // 3. VALIDACIÓN DE SEGURIDAD
-    // Si el dato está corrupto o falta, asumimos 1 hora para que la validación no falle silenciosamente
-    if (isNaN(durationHours) || durationHours <= 0) {
-        console.warn(`⚠️ Partido "${match.MatchName || 'Nuevo'}" sin duración válida (${rawDuration}). Usando 1h por defecto.`);
-        durationHours = 1; 
+    // Si no viene en el objeto (ej: estamos creando el partido), leemos del DOM
+    if ((durationHours === undefined || durationHours === null) && document.getElementById('match-duration')) {
+        durationHours = parseFloat(document.getElementById('match-duration').value);
     }
 
-    // 4. CALCULAR EL FINAL
-    const durationMilliseconds = durationHours * 3600000;
-    const end = new Date(start.getTime() + durationMilliseconds); 
+    // Validación de seguridad
+    if (!durationHours || isNaN(durationHours)) {
+        durationHours = 1; // 1 hora por defecto si falla
+    }
 
-    return { start, end };
+    // 3. Calcular fin: Inicio + (Horas * 3.6 millones de ms)
+    const durationMs = durationHours * 60 * 60 * 1000;
+    const endMs = startMs + durationMs;
+
+    return { 
+        start: startMs, 
+        end: endMs, 
+        name: match.MatchName || 'Nuevo Partido',
+        humanStart: startDate.toLocaleTimeString(),
+        humanEnd: new Date(endMs).toLocaleTimeString()
+    };
 }
 
 /**
  * Verifica si dos rangos de tiempo se cruzan.
+ * Lógica: Un partido A se cruza con B si:
+ * El inicio de A es antes del final de B Y el final de A es después del inicio de B.
  */
 function isOverlapping(windowA, windowB) {
     return windowA.start < windowB.end && windowA.end > windowB.start;
 }
-
 // --------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
