@@ -4,7 +4,7 @@
 // 1. IMPORTACIONES
 // ======================================
 import { initializeDashboardUI } from './components/DashboardUI.js'; // <-- ¡NUEVO MÓDULO UI!
-import { loginUser, registerUser, getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI, deleteMatchAPI } from './services/api.js';
+import { loginUser, registerUser, getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI, deleteMatchAPI, getMyMatches } from './services/api.js';
 import { createMatchCard } from './components/MatchCard.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -156,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // FUNCIÓN PARA CREAR PARTIDO
+  // main.js
+
   async function createMatch(e) {
       e.preventDefault();
       
@@ -164,121 +166,128 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (!token || !currentUserId) return alert('Tu sesión ha expirado.');
 
-      // 1. Datos del Formulario
       const matchData = {
-        MatchName: document.getElementById('match-name').value,
-        LocationName: document.getElementById('match-location').value,
-        MatchDate: document.getElementById('match-date').value,
-        MatchDuration: parseFloat(document.getElementById('match-duration').value),
-        PlayersBySide: parseInt(document.getElementById('match-players-side').value),
-        requiredPlayers: parseInt(document.getElementById('match-required').value)
+          MatchName: document.getElementById('match-name').value,
+          LocationName: document.getElementById('match-location').value,
+          MatchDate: document.getElementById('match-date').value,
+          MatchDuration: parseFloat(document.getElementById('match-duration').value),
+          PlayersBySide: parseInt(document.getElementById('match-players-side').value),
+          requiredPlayers: parseInt(document.getElementById('match-required').value)
       };
 
       if (isNaN(matchData.MatchDuration) || matchData.MatchDuration <= 0) {
-        return alert("Ingresa una duración válida (ej: 1 o 1.5).");
+          return alert("Ingresa una duración válida (ej: 1 o 1.5).");
       }
 
       try {
-        // --- VALIDACIÓN DE CONFLICTO ---
-        console.log("--- INICIANDO VALIDACIÓN DE CONFLICTO (CREAR) ---");
-        
-        // A. Traer todos los partidos
-        const allMatchesResponse = await getMatches();
-        if (!allMatchesResponse.ok) throw new Error('No se pudieron verificar los horarios');
-        const allMatches = await allMatchesResponse.json();
+          console.log("--- INICIANDO VALIDACIÓN DE CONFLICTO (CREAR) ---");
+          
+          // ============================================================
+          // CAMBIO IMPORTANTE: Usamos el endpoint específico
+          // ============================================================
+          
+          // 1. Pedimos directamente MIS partidos al backend
+          const myMatchesResponse = await getMyMatches();
+          if (!myMatchesResponse.ok) throw new Error('No se pudo verificar tu agenda');
+          
+          // El backend ya nos da la lista filtrada y limpia
+          const myMatches = await myMatchesResponse.json();
 
-        // B. Filtrar MIS partidos (donde ya estoy inscrito)
-        const myMatches = allMatches.filter(m => 
-          m.participants.some(p => p && p._id === currentUserId)
-        );
+          // ============================================================
 
-        // C. Calcular ventana del NUEVO partido
-        const newWindow = calculateMatchWindow(matchData);
-        console.log(`NUEVO INTENTO: ${newWindow.name} | ${newWindow.humanStart} - ${newWindow.humanEnd}`);
+          // 2. Calcular ventana del NUEVO partido
+          const newWindow = calculateMatchWindow(matchData);
+          console.log(`NUEVO INTENTO: ${newWindow.name} | ${newWindow.humanStart} - ${newWindow.humanEnd}`);
 
-        // D. Comparar con mis partidos existentes
-        for (const existingMatch of myMatches) {
-          const existingWindow = calculateMatchWindow(existingMatch);
-          console.log(`COMPARANDO CON: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
+          // 3. Comparar con mis partidos existentes
+          for (const existingMatch of myMatches) {
+              const existingWindow = calculateMatchWindow(existingMatch);
+              console.log(`COMPARANDO CON: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
 
-          if (isOverlapping(existingWindow, newWindow)) {
-            console.warn("❌ CRUCE DETECTADO");
-            alert(`⚠️ CONFLICTO: Ya tienes el partido "${existingMatch.MatchName}" a esa hora (${existingWindow.humanStart} - ${existingWindow.humanEnd}).`);
-            return; // DETIENE TODO
+              if (isOverlapping(existingWindow, newWindow)) {
+                  console.warn("❌ CRUCE DETECTADO");
+                  alert(`⚠️ CONFLICTO: Ya tienes el partido "${existingMatch.MatchName}" a esa hora.`);
+                  return; // DETIENE TODO
+              }
           }
-        }
-        console.log("✅ Horario libre. Creando...");
-        // --- FIN VALIDACIÓN ---
+          
+          console.log("✅ Horario libre. Creando...");
 
-        // 2. Crear si no hay conflicto
-        const response = await createMatchService(matchData); 
-        const data = await response.json();
-        
-        if (!response.ok) throw new Error(data.msg || 'Error al crear');
+          // 4. Crear si no hay conflicto
+          const response = await createMatchService(matchData); 
+          const data = await response.json();
+          
+          if (!response.ok) throw new Error(data.msg || 'Error al crear');
 
-        alert('¡Partido creado con éxito!');
-        createMatchForm.reset();
-        document.getElementById('nav-home').click(); // Volver al home
+          alert('¡Partido creado con éxito!');
+          createMatchForm.reset();
+          document.getElementById('nav-home').click(); 
 
       } catch (error) {
-        alert(error.message);
+          alert(error.message);
       }
   }
 
   // FUNCIÓN PARA UNIRSE A PARTIDO
+  // main.js
+
   async function joinMatch(matchId) {
     const token = localStorage.getItem('token');
-    const currentUserId = localStorage.getItem('userId');
+    const currentUserId = localStorage.getItem('userId'); 
     
     if (!token || !currentUserId) {
-      alert('Tu sesión ha expirado, inicia sesión de nuevo.');
-      return;
+        alert('Tu sesión ha expirado, por favor inicia sesión de nuevo.');
+        return;
     }
 
     try {
-        // --- VALIDACIÓN DE CONFLICTO ---
         console.log("--- INICIANDO VALIDACIÓN DE CONFLICTO (UNIRSE) ---");
 
-        const allMatchesResponse = await getMatches();
-        if (allMatchesResponse.ok) {
-          const allMatches = await allMatchesResponse.json();
+        // 1. Obtener el partido al que me quiero unir (Target)
+        // (Podríamos hacer un fetch solo de este partido, pero como ya cargamos todos en el feed,
+        // podemos intentar buscarlo en el DOM o hacer un fetch rápido si queremos ser muy precisos.
+        // Para simplificar y asegurar datos frescos, hacemos un getMatchById o reutilizamos la lógica).
+        
+        // Opción A: Pedir los detalles de ESTE partido específico para tener su hora exacta
+        const targetMatchResponse = await getMatchById(matchId);
+        if (!targetMatchResponse.ok) throw new Error('No se pudo obtener información del partido destino');
+        const matchToJoin = await targetMatchResponse.json();
 
-          // A. Buscar el partido objetivo y MIS partidos
-          const matchToJoin = allMatches.find(m => m._id === matchId);
-          const myMatches = allMatches.filter(m => 
-            m.participants.some(p => p && p._id === currentUserId)
-          );
+        // 2. Obtener MI AGENDA (Mis partidos)
+        const myMatchesResponse = await getMyMatches();
+        if (!myMatchesResponse.ok) throw new Error('No se pudo verificar tu agenda');
+        const myMatches = await myMatchesResponse.json();
 
-          if (matchToJoin) {
-            const targetWindow = calculateMatchWindow(matchToJoin);
-            console.log(`INTENTO UNIRME A: ${targetWindow.name} | ${targetWindow.humanStart} - ${targetWindow.humanEnd}`);
+        // 3. Verificar Conflictos
+        // Calculamos el horario del partido al que quiero entrar
+        const targetWindow = calculateMatchWindow(matchToJoin);
+        console.log(`INTENTO UNIRME A: ${targetWindow.name} | ${targetWindow.humanStart} - ${targetWindow.humanEnd}`);
 
-            for (const existingMatch of myMatches) {
-              const existingWindow = calculateMatchWindow(existingMatch);
-              console.log(`REVISANDO MI AGENDA: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
+        for (const existingMatch of myMatches) {
+            // Calculamos el horario de cada partido que ya tengo
+            const existingWindow = calculateMatchWindow(existingMatch);
+            console.log(`REVISANDO MI AGENDA: ${existingWindow.name} | ${existingWindow.humanStart} - ${existingWindow.humanEnd}`);
 
-              if (isOverlapping(existingWindow, targetWindow)) {
+            if (isOverlapping(existingWindow, targetWindow)) {
                 console.warn("❌ CRUCE DETECTADO");
                 alert(`⚠️ IMPOSIBLE UNIRSE: Choca con tu partido "${existingMatch.MatchName}" (${existingWindow.humanStart} - ${existingWindow.humanEnd}).`);
-                return; // DETIENE TODO
-              }
+                return; // Detiene el proceso, no te une.
             }
-          }
         }
-        // --- FIN VALIDACIÓN ---
-
+        
+        // 4. Si la agenda está libre, procedemos a unirnos
         const response = await joinMatchAPI(matchId);
         const data = await response.json();
 
         if (response.ok) {
-          alert('¡Te has unido al partido!');
-          loadMatches(); 
+            alert('¡Te has unido al partido!');
+            loadMatches(); // Recargamos el feed
         } else {
-          alert(`Error: ${data.msg}`);
+            alert(`Error: ${data.msg}`);
         }
     } catch (error) {
-      alert('Error al intentar unirse.');
-      console.error(error);
+        console.error(error);
+        alert('Error al intentar unirse. Revisa la consola para más detalles.');
     }
   }
 

@@ -154,3 +154,16 @@ exports.deleteAnyMatch = async (req, res) => {
         res.status(500).json({ msg: 'Error interno del servidor al intentar borrar el partido.', error: error.message });
     }
 };
+
+exports.getMyMatches = async (req, res) => {
+    try {
+        const userId = req.user.id; // Obtenido del token
+
+        // Mongoose hace el trabajo sucio: busca donde 'participants' contenga el userId
+        const matches = await Match.find({ participants: userId });
+
+        res.status(200).json(matches);
+    } catch (error) {
+        res.status(500).json({ msg: 'Error al obtener tus partidos', error: error.message });
+    }
+};

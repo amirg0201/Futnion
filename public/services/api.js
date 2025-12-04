@@ -80,3 +80,11 @@ export const deleteMatchAPI = async (matchId, userRole) => {
     
     return response;
 };
+
+export const getMyMatches = async () => {
+    const response = await fetch(`${API_BASE_URL}/partidos/mis-partidos`, {
+        method: 'GET',
+        headers: getAuthHeaders() // Necesita token para saber quién eres
+    });
+    return response;
+};
