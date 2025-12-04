@@ -383,3 +383,42 @@ async function handleDeleteMatch(matchId) {
   });
 
 });
+
+/**
+ * Calcula el inicio y fin de un partido.
+ */
+function calculateMatchWindow(match) {
+    const start = new Date(match.MatchDate);
+    
+    // Intenta leer la duración del objeto match, o del input del formulario si no existe
+    let durationHours = match.MatchDuration;
+    
+    // Si no viene en el objeto (ej: estamos creando el partido), leemos del DOM
+    if (!durationHours && document.getElementById('match-duration')) {
+        durationHours = parseFloat(document.getElementById('match-duration').value);
+    }
+    
+    // Validación básica: si falla, asumimos 1 hora para no romper la app al leer partidos viejos
+    if (isNaN(durationHours) || durationHours <= 0) {
+        durationHours = 1; 
+    }
+
+    // Convertir horas a milisegundos
+    const durationMilliseconds = durationHours * 3600000;
+    const end = new Date(start.getTime() + durationMilliseconds); 
+
+    return { start, end };
+}
+
+/**
+ * Verifica si dos rangos de tiempo se cruzan.
+ */
+function isOverlapping(windowA, windowB) {
+    return windowA.start < windowB.end && windowA.end > windowB.start;
+}
+
+// --------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+   // ... resto de tu código ...
+});
