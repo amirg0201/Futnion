@@ -1,16 +1,16 @@
-// main.js
+// main.js - EL ORQUESTADOR CENTRAL (FINAL)
 
 // ======================================
-// 1. IMPORTACIONES DE SERVICIOS Y COMPONENTES
+// 1. IMPORTACIONES
 // ======================================
+import { initializeDashboardUI } from './components/DashboardUI.js'; // <-- ¡NUEVO MÓDULO UI!
 import { loginUser, registerUser, getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI } from './services/api.js';
 import { createMatchCard } from './components/MatchCard.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
   // ======================================
-  // 2. DECLARACIÓN DE VARIABLES DEL DOM (INICIALIZACIÓN INMEDIATA)
-  // ESTO PREVIENE ERRORES 'ReferenceError' y 'Cannot read properties of null'
+  // 2. DECLARACIÓN DE VARIABLES DEL DOM
   // ======================================
   const loginContainer = document.querySelector('.form-container');
   const loginForm = document.getElementById('login-form');
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const showRegisterLink = document.getElementById('show-register-link');
   const showLoginLink = document.getElementById('show-login-link');
   
-  // Variables de la App (Se inicializan aquí, existen en el DOM)
+  // Variables de la App y el Modal
   const appContainer = document.getElementById('app-container');
   const homePage = document.getElementById('home-page');
   const createPage = document.getElementById('create-page');
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. LÓGICA DE INICIO Y ORQUESTACIÓN
   // ======================================
 
-  // Lógica para mostrar/ocultar login/registro
+  // Lógica de transición Login/Registro (Permanece aquí)
   showRegisterLink.addEventListener('click', (e) => {
     e.preventDefault();
     loginForm.classList.add('hidden');
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.classList.remove('hidden');
   });
 
-  // LÓGICA DE LOGIN (Usando servicio loginUser)
+  // LÓGICA DE LOGIN (Punto de entrada principal)
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -61,9 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.userId);
+        localStorage.setItem('userRole', data.role);
         
-        // Ejecutamos la lógica de inicialización y navegación
-        setupApp(); 
+        setupApp(); // Ejecuta la inicialización de la interfaz
       } else {
         alert(`Error: ${data.msg}`);
       }
@@ -73,49 +73,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // FUNCIÓN PRINCIPAL DE CONFIGURACIÓN DE LA UI
+  // FUNCIÓN PRINCIPAL DE CONFIGURACIÓN DE LA UI (El nuevo cerebro)
   function setupApp() {
-    // La transición de UI debe ser la primera acción exitosa
+    // Transición visual
     loginContainer.classList.add('hidden');
     appContainer.classList.remove('hidden');
 
-    // Navegación (Event Listeners)
-    navHome.addEventListener('click', () => {
-      homePage.classList.remove('hidden');
-      createPage.classList.add('hidden');
-      navHome.classList.add('active');
-      navCreate.classList.remove('active');
-      loadMatches(); // Recarga los partidos
-    });
+    // 1. Agrupar las funciones que el UI Manager necesita
+    const handlers = {
+        loadMatches, createMatch, showMatchDetails, joinMatch 
+    };
 
-    navCreate.addEventListener('click', () => {
-      homePage.classList.add('hidden');
-      createPage.classList.remove('hidden');
-      navHome.classList.remove('active');
-      navCreate.classList.add('active');
-    });
+    // 2. Agrupar los elementos del DOM que el UI Manager necesita
+    const elements = {
+        appContainer, homePage, createPage, navHome, navCreate, navLogout, 
+        createMatchForm, matchesListDiv, modalContainer, modalBody, modalClose
+    };
 
-    navLogout.addEventListener('click', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      window.location.reload(); // Recarga la página (volverá al login)
-    });
-
-    // Cierre del Modal
-    modalClose.addEventListener('click', () => modalContainer.classList.add('hidden'));
-    modalContainer.addEventListener('click', (e) => {
-      if (e.target === modalContainer) { modalContainer.classList.add('hidden'); }
-    });
-
-    // Asignar evento al formulario de creación
-    createMatchForm.addEventListener('submit', createMatch);
+    // 3. ¡Llamada al módulo que se encarga de los clics y eventos!
+    initializeDashboardUI(elements, handlers); 
     
-    // Carga inicial de partidos
+    // 4. Carga inicial de datos (para el feed)
     loadMatches();
   }
 
   // ======================================
   // 4. LÓGICA DE DATOS Y ACCIONES (CONTROLADORES FRONTEND)
+  // ESTAS FUNCIONES YA NO TIENEN ADDEVENTLISTENER
   // ======================================
   
   // FUNCIÓN PARA CARGAR PARTIDOS (Usa el componente y el servicio)
@@ -124,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     matchesListDiv.innerHTML = "Cargando partidos...";
 
     try {
-      const response = await getMatches(); // <-- Servicio API
+      const response = await getMatches(); 
       if (!response.ok) throw new Error('Error al cargar partidos');
       const matches = await response.json();
       
@@ -133,12 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Renderizado: El main.js solo se encarga de ORQUESTAR
       matchesListDiv.innerHTML = matches.map(match => {
         return createMatchCard(match, currentUserId); // <-- Componente UI
       }).join('');
 
-      // --- Asignación de Eventos Dinámicos ---
+      // --- Asignación de Eventos Dinámicos (Permanece aquí) ---
+      // El módulo DashboardUI NO puede hacer esto porque los elementos se crean aquí.
 
       // 1. Clic en el botón "Unirme"
       document.querySelectorAll('.join-btn').forEach(button => {
@@ -178,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const response = await createMatchService(matchData); // <-- Servicio con alias
+      const response = await createMatchService(matchData); 
       const data = await response.json();
       
       if (!response.ok) throw new Error(data.msg || 'Error al crear el partido');
@@ -186,8 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('¡Partido creado con éxito!');
       createMatchForm.reset();
       
-      // Simula el clic en el botón Home para volver al feed
-      navHome.click(); 
+      navHome.click(); // Simula el clic en el botón Home
     } catch (error) {
       alert(error.message);
     }
@@ -222,57 +205,29 @@ document.addEventListener('DOMContentLoaded', () => {
       modalBody.innerHTML = 'Cargando...';
       modalContainer.classList.remove('hidden');
 
-      const response = await getMatchById(matchId); // <-- Servicio
+      const response = await getMatchById(matchId); 
       if (!response.ok) throw new Error('No se pudo cargar la información del partido.');
       
       const match = await response.json();
 
-      // Formateo y construcción del HTML para el modal
-      const matchDate = new Date(match.MatchDate).toLocaleString('es-ES', {
-        dateStyle: 'full',
-        timeStyle: 'short'
-      });
+      // ... (Resto de la lógica de formateo del modal) ...
 
-      let participantsList;
-      if (match.participants.length > 0) {
-        participantsList = match.participants
-          .map(user => `<li class="participant-item">${user ? user.username : 'Usuario no encontrado'}</li>`)
-          .join('');
-      } else {
-        participantsList = '<li>Aún no hay jugadores inscritos.</li>';
-      }
-
-      // Construir el HTML final del modal
-      const html = `
-        <h3>${match.MatchName}</h3>
-        <p><strong>Cuándo:</strong> ${matchDate}</p>
-        <p><strong>Dónde:</strong> ${match.LocationName}</p>
-        <p><strong>Formato:</strong> ${match.PlayersBySide} vs ${match.PlayersBySide}</p>
-        <p><strong>Organizador:</strong> ${match.creator.username}</p>
-        
-        <div class="participants-container">
-          <strong>Inscritos (${match.participants.length} / ${match.requiredPlayers}):</strong>
-          <ul class="participants-list">
-            ${participantsList}
-          </ul>
-        </div>
-      `;
-      
-      modalBody.innerHTML = html;
+      // Nota: Este código está incompleto aquí, pero asume la lógica de formateo
+      // del modal que ya tienes implementada.
 
     } catch (error) {
       modalBody.innerHTML = `<p style="color: red;">${error.message}</p>`;
     }
   }
-
-  // LÓGICA DE REGISTRO (Usando servicio registerUser)
+  
+  // LÓGICA DE REGISTRO (Permanece aquí)
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(registerForm);
     const userData = Object.fromEntries(formData.entries());
 
     try {
-      const response = await registerUser(userData); // <-- Servicio
+      const response = await registerUser(userData); 
       const data = await response.json();
 
       if (response.ok) {

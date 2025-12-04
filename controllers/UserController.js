@@ -136,7 +136,7 @@ exports.loginUser = async (req, res) => {
         const token = jwt.sign(payload, secret, { expiresIn: '2h' });
 
         // 4. Responder con el token
-        res.status(200).json({ msg: 'Login exitoso', token, userId: usuario._id });
+        res.status(200).json({ msg: 'Login exitoso', token, userId: usuario._id, role: usuario.role });
 
     } catch (error) {
         res.status(500).json({ msg: 'Hubo un error en el servidor', error: error.message });
