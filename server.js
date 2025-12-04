@@ -6,7 +6,7 @@ const cors = require('cors');
 // Middleware para parsear JSON
 app.use(express.json());
 
-app.use(express.static('public'));
+// app.use(express.static('public'));
 // Conectar a MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/FutnionDB')
   .then(() => console.log('✅ Conectado a MongoDB'))
