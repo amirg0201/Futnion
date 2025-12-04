@@ -6,14 +6,14 @@ const adminAuth = require('../middleware/adminAuth');
 
 // --- Rutas del CRUD de Partidos ---
 
+router.get('/mis-partidos', auth, matchController.getMyMatches);
+router.delete('/admin/:id', auth, adminAuth, matchController.deleteAnyMatch);
 router.post('/', auth, matchController.createMatch);
 router.post('/:id/join', auth, matchController.joinMatch);
 router.get('/', matchController.getMatches);
 router.get('/:id', matchController.getMatchById);
-router.get('/mis-partidos', auth, matchController.getMyMatches);
 router.put('/:id', auth, matchController.updateMatch);
 router.delete('/:id', auth, matchController.deleteMatch);
-router.delete('/admin/:id', auth, adminAuth, matchController.deleteAnyMatch);
 
 
 module.exports = router;  
