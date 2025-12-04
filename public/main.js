@@ -142,6 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+      document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.stopPropagation(); // Evita que el clic abra también el modal
+          const matchId = e.target.dataset.id;
+          handleDeleteMatch(matchId); // <-- Llama a la función que acabamos de crear
+        });
+      });
+
     } catch (error) {
       matchesListDiv.innerHTML = `<p style="color: red;">${error.message}</p>`;
     }
@@ -247,6 +255,43 @@ document.addEventListener('DOMContentLoaded', () => {
       modalBody.innerHTML = `<p style="color: red;">${error.message}</p>`;
     }
   }
+
+  // main.js (Añade esto a la sección 4. LÓGICA DE DATOS Y ACCIONES)
+
+/**
+ * Maneja la eliminación de un partido, usando la ruta correcta según el rol.
+ * @param {string} matchId - El ID del partido a eliminar.
+ */
+async function handleDeleteMatch(matchId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este partido? Esta acción es irreversible.')) return;
+
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('userRole');
+    
+    // Decidir el ENDPOINT:
+    // Admin usa la ruta protegida /admin/ para borrar cualquier partido.
+    // Usuario normal usa la ruta /:id para borrar su propio partido (la seguridad se verifica en el backend).
+    const endpoint = userRole === 'admin' 
+        ? `/api/partidos/admin/${matchId}` 
+        : `/api/partidos/${matchId}`;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            alert('Partido eliminado con éxito.');
+            loadMatches(); // Recargar el feed para que el partido desaparezca
+        } else {
+            const data = await response.json();
+            alert(`Error al eliminar el partido: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error de red al intentar eliminar el partido.');
+    }
+}
   
   // LÓGICA DE REGISTRO (Permanece aquí)
   registerForm.addEventListener('submit', async (e) => {
