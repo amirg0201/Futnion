@@ -155,11 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // FUNCIÓN PARA CREAR PARTIDO (Usa el servicio)
   async function createMatch(e) {
     e.preventDefault();
+    
     const token = localStorage.getItem('token');
     const currentUserId = localStorage.getItem('userId'); 
+    
     if (!token || !currentUserId) return alert('Tu sesión ha expirado. Intenta iniciar sesión de nuevo.');
 
     // 1. Recolección y Conversión de Datos
@@ -167,12 +168,46 @@ document.addEventListener('DOMContentLoaded', () => {
       MatchName: document.getElementById('match-name').value,
       LocationName: document.getElementById('match-location').value,
       MatchDate: document.getElementById('match-date').value,
-      MatchDuration: document.getElementById('match-duration').value,
+      // CONVERSIÓN CRÍTICA: De texto a número decimal
+      MatchDuration: parseFloat(document.getElementById('match-duration').value),
       PlayersBySide: parseInt(document.getElementById('match-players-side').value),
       requiredPlayers: parseInt(document.getElementById('match-required').value)
     };
 
+    // Validación simple
+    if (isNaN(matchData.MatchDuration) || matchData.MatchDuration <= 0) {
+      return alert("Por favor ingresa una duración válida (ej: 1.5 para hora y media).");
+    }
+
     try {
+      // --- INICIO LÓGICA DE CONFLICTO ---
+      // A. Obtener partidos para verificar horario
+      const allMatchesResponse = await getMatches();
+      if (allMatchesResponse.ok) {
+        const allMatches = await allMatchesResponse.json();
+        
+        // B. Filtrar solo los partidos donde el usuario ya está inscrito
+        const userJoinedMatches = allMatches.filter(m => 
+          m.participants.some(p => p && p._id === currentUserId)
+        );
+        
+        // C. Calcular ventana del NUEVO partido
+        // (Asegúrate de tener la función auxiliar calculateMatchWindow en tu archivo)
+        const newMatchWindow = calculateMatchWindow(matchData); 
+
+        // D. Comparar con cada partido existente
+        for (const existingMatch of userJoinedMatches) {
+          const existingWindow = calculateMatchWindow(existingMatch);
+          
+          if (isOverlapping(existingWindow, newMatchWindow)) {
+            alert(`Conflicto de horario: Este nuevo partido se solapa con "${existingMatch.MatchName}".`);
+            return; // Detiene la creación
+          }
+        }
+      }
+      // --- FIN LÓGICA DE CONFLICTO ---
+
+      // 2. Si no hay conflicto, enviamos al servidor
       const response = await createMatchService(matchData); 
       const data = await response.json();
       
@@ -181,32 +216,59 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('¡Partido creado con éxito!');
       createMatchForm.reset();
       
-      navHome.click(); // Simula el clic en el botón Home
+      navHome.click(); 
     } catch (error) {
       alert(error.message);
     }
-
   }
 
   // FUNCIÓN PARA UNIRSE A PARTIDO (Usa el servicio)
   async function joinMatch(matchId) {
     const token = localStorage.getItem('token');
     const currentUserId = localStorage.getItem('userId'); 
+    
     if (!token || !currentUserId) {
-        alert('Tu sesión ha expirado, por favor inicia sesión de nuevo.');
-        return;
+      alert('Tu sesión ha expirado, por favor inicia sesión de nuevo.');
+      return;
     }
 
     try {
-      const response = await joinMatchAPI(matchId);
-      const data = await response.json();
+        // --- INICIO LÓGICA DE CONFLICTO ---
+        const allMatchesResponse = await getMatches();
+        if (allMatchesResponse.ok) {
+          const allMatches = await allMatchesResponse.json();
 
-      if (response.ok) {
-        alert('¡Te has unido al partido!');
-        loadMatches(); // Recargamos la lista de partidos
-      } else {
-        alert(`Error: ${data.msg}`);
-      }
+          // A. Obtener el partido objetivo y mis partidos
+          const newMatchToJoin = allMatches.find(m => m._id === matchId);
+          const userJoinedMatches = allMatches.filter(m => 
+            m.participants.some(p => p && p._id === currentUserId)
+          );
+
+          if (newMatchToJoin) {
+            const newMatchWindow = calculateMatchWindow(newMatchToJoin);
+
+            // B. Verificar cruces
+            for (const existingMatch of userJoinedMatches) {
+              const existingWindow = calculateMatchWindow(existingMatch);
+              
+              if (isOverlapping(existingWindow, newMatchWindow)) {
+                alert(`No puedes unirte. El horario choca con tu partido "${existingMatch.MatchName}".`);
+                return; // Cancela la unión
+              }
+            }
+          }
+        }
+        // --- FIN LÓGICA DE CONFLICTO ---
+
+        const response = await joinMatchAPI(matchId);
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('¡Te has unido al partido!');
+          loadMatches(); 
+        } else {
+          alert(`Error: ${data.msg}`);
+        }
     } catch (error) {
       alert('Error de red al intentar unirse.');
     }
