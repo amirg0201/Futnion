@@ -65,3 +65,18 @@ export const joinMatchAPI = async (matchId) => {
     });
     return response;
 };
+
+export const deleteMatchAPI = async (matchId, userRole) => {
+    // Decidir la ruta basada en el rol
+    const route = userRole === 'admin' 
+        ? `/partidos/admin/${matchId}` 
+        : `/partidos/${matchId}`;
+
+    // Usar la URL base correcta (Render o Localhost)
+    const response = await fetch(`${API_BASE_URL}${route}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders() // Usa tus headers con el token
+    });
+    
+    return response;
+};

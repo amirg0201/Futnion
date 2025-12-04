@@ -4,7 +4,7 @@
 // 1. IMPORTACIONES
 // ======================================
 import { initializeDashboardUI } from './components/DashboardUI.js'; // <-- ¡NUEVO MÓDULO UI!
-import { loginUser, registerUser, getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI } from './services/api.js';
+import { loginUser, registerUser, getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI, deleteMatchAPI } from './services/api.js';
 import { createMatchCard } from './components/MatchCard.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -330,30 +330,21 @@ document.addEventListener('DOMContentLoaded', () => {
 async function handleDeleteMatch(matchId) {
     if (!confirm('¿Estás seguro de que quieres eliminar este partido? Esta acción es irreversible.')) return;
 
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    
-    // Decidir el ENDPOINT:
-    // Admin usa la ruta protegida /admin/ para borrar cualquier partido.
-    // Usuario normal usa la ruta /:id para borrar su propio partido (la seguridad se verifica en el backend).
-    const endpoint = userRole === 'admin' 
-        ? `/api/partidos/admin/${matchId}` 
-        : `/api/partidos/${matchId}`;
+    const userRole = localStorage.getItem('userRole'); // Obtenemos el rol
 
     try {
-        const response = await fetch(endpoint, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // Llamamos al servicio (que ya sabe la URL de Render)
+        const response = await deleteMatchAPI(matchId, userRole);
 
         if (response.ok) {
             alert('Partido eliminado con éxito.');
-            loadMatches(); // Recargar el feed para que el partido desaparezca
+            loadMatches(); // Recargar el feed
         } else {
             const data = await response.json();
-            alert(`Error al eliminar el partido: ${data.msg}`);
+            alert(`Error al eliminar: ${data.msg}`);
         }
     } catch (error) {
+        console.error(error);
         alert('Error de red al intentar eliminar el partido.');
     }
 }
