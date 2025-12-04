@@ -60,15 +60,37 @@ exports.updateMatch = async (req, res) => {
     }
 };
 
-// DELETE: Eliminar un partido
+// DELETE: Eliminar un partido (solo el creador puede hacerlo)
 exports.deleteMatch = async (req, res) => {
     try {
-        const match = await Match.findByIdAndDelete(req.params.id);
-        if (!match) {
-            return res.status(404).json({ msg: 'Partido no encontrado' });
+        const matchId = req.params.id;
+        // El ID del usuario actual está garantizado por el middleware 'auth'
+        const userId = req.user.id; 
+
+        // 1. Buscar el partido (solo para verificar quién es el creador)
+        const matchToDelete = await Match.findById(matchId).select('creator');
+
+        // Check 1: ¿El partido existe?
+        if (!matchToDelete) {
+            return res.status(404).json({ msg: 'Partido no encontrado.' });
         }
-        res.status(200).json({ msg: 'Partido eliminado' });
+
+        // Check 2: ¿El ID del creador del partido NO coincide con el ID del usuario actual?
+        // Convertimos el ObjectId a string para la comparación
+        if (matchToDelete.creator.toString() !== userId) {
+            // 403 Forbidden: No tiene el permiso necesario
+            return res.status(403).json({ 
+                msg: 'Acceso denegado. Solo el creador puede eliminar este partido.' 
+            });
+        }
+
+        // 3. Si las verificaciones pasaron, ejecutamos la eliminación
+        await Match.findByIdAndDelete(matchId);
+
+        res.status(200).json({ msg: 'Partido eliminado.' });
+
     } catch (error) {
+        // Manejar errores de Mongoose o del servidor
         res.status(500).json({ msg: 'Hubo un error al eliminar el partido', error: error.message });
     }
 };
@@ -110,7 +132,25 @@ exports.joinMatch = async (req, res) => {
 };
 
 exports.deleteAnyMatch = async (req, res) => {
-    // Logic to delete the match by ID...
-    console.log("Admin aIntentando borrar partido con ID:", req.params.id);
-    res.status(200).json({ msg: "Partido borrado por el Admin" });
+    try {
+        const matchId = req.params.id;
+
+        // 1. Opcional: Loguear qué usuario admin está borrando.
+        console.log(`[ADMIN DELETE] Usuario ${req.user.id} eliminando partido ID: ${matchId}`);
+        
+        // 2. CRÍTICO: Ejecutar la eliminación en la base de datos
+        // findByIdAndDelete busca el documento y lo elimina
+        const match = await Match.findByIdAndDelete(matchId);
+
+        // 3. Verificar si el partido fue encontrado y borrado
+        if (!match) {
+            return res.status(404).json({ msg: 'Partido no encontrado o ya fue eliminado.' });
+        }
+        
+        // 4. Éxito: Devolver la confirmación.
+        res.status(200).json({ msg: `Partido ${matchId} eliminado por el administrador.` });
+    } catch (error) {
+        // Manejar errores de Mongoose o del servidor
+        res.status(500).json({ msg: 'Error interno del servidor al intentar borrar el partido.', error: error.message });
+    }
 };
