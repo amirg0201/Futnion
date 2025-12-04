@@ -26,6 +26,8 @@ module.exports = async function(req, res, next) {
     // 4. CRÍTICO: Buscar el rol del usuario en la base de datos
     const user = await User.findById(userId).select('role');
 
+    console.log('ROL OBTENIDO DE LA DB:', user.role);
+
     if (!user) {
       return res.status(401).json({ msg: 'Token inválido: Usuario no encontrado.' });
     }
