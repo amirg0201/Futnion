@@ -108,3 +108,9 @@ exports.joinMatch = async (req, res) => {
         res.status(500).json({ msg: 'Hubo un error al unirse al partido', error: error.message });
     }
 };
+
+exports.deleteAnyMatch = async (req, res) => {
+    // Logic to delete the match by ID...
+    console.log("Admin aIntentando borrar partido con ID:", req.params.id);
+    res.status(200).json({ msg: "Partido borrado por el Admin" });
+};
