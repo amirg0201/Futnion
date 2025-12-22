@@ -7,7 +7,7 @@ import { initializeDashboardUI } from './components/DashboardUI.js';
 import { loginUser, registerUser} from './services/authService.js';
 import {getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI, deleteMatchAPI, getMyMatches, leaveMatchAPI, removeParticipantAPI } from './services/matchService.js';
 import { createMatchCard } from './components/MatchCard.js';
-import matchValidator from './utils/MatchValidator.js';
+import matchValidator from './utils/matchValidators.js';
 
 // ======================================
 // 2. FUNCIONES AUXILIARES (UTILIDADES)
