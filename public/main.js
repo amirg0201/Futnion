@@ -7,6 +7,7 @@ import { initializeDashboardUI } from './components/DashboardUI.js';
 import { loginUser, registerUser} from './services/authService.js';
 import {getMatches, createMatch as createMatchService, getMatchById, joinMatchAPI, deleteMatchAPI, getMyMatches, leaveMatchAPI, removeParticipantAPI } from './services/matchService.js';
 import { createMatchCard } from './components/MatchCard.js';
+import matchValidator from './utils/MatchValidator.js';
 
 // ======================================
 // 2. FUNCIONES AUXILIARES (UTILIDADES)
@@ -258,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // --- CREAR PARTIDO (CON VALIDACIÓN DE TIEMPO) ---
+
   async function createMatch(e) {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -265,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!token || !currentUserId) return alert('Tu sesión ha expirado.');
 
+    // 1. Recolección de Datos
     const matchData = {
       MatchName: document.getElementById('match-name').value,
       LocationName: document.getElementById('match-location').value,
@@ -274,12 +277,21 @@ document.addEventListener('DOMContentLoaded', () => {
       requiredPlayers: parseInt(document.getElementById('match-required').value)
     };
 
-    if (isNaN(matchData.MatchDuration) || matchData.MatchDuration <= 0) {
-        return alert("Ingresa una duración válida (ej: 1 o 1.5).");
+    // ============================================================
+    // APLICACIÓN DE OCP (Open/Closed Principle)
+    // ============================================================
+    // En lugar de escribir "if (duration < 0)...", delegamos al validador.
+    // Si mañana se requiere validar que el nombre no tenga insultos,
+    // NO cambiamos esta función, solo se agrega una regla en MatchValidator.js
+    
+    const validationError = matchValidator.validate(matchData);
+    
+    if (validationError) {
+        return alert(validationError); // Detiene la ejecución si hay error
     }
+    // ============================================================
 
     try {
-      // Validación de Conflicto
       const myMatchesResponse = await getMyMatches();
       if (myMatchesResponse.ok) {
           const myMatches = await myMatchesResponse.json();
@@ -293,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       }
 
+      // Envío al Backend
       const response = await createMatchService(matchData); 
       const data = await response.json();
       
