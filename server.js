@@ -16,7 +16,7 @@ const app = express();
 const allowedOrigins = [
     // ⚠️ Importante: Reemplaza por tu URL de Vercel.
     'https://futnion.vercel.app', 
-    'http://localhost:3005', // Para desarrollo local
+    'http://localhost:5173', // Para desarrollo local
 ];
 
 const corsOptions = {
