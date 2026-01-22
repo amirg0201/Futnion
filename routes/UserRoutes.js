@@ -1,25 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/UserController');
+const auth = require('../middleware/auth'); // Importamos el middleware de seguridad
 
-// --- Rutas del CRUD de Usuarios ---
+// 1. IMPORTAR LAS CLASES (Mayúscula inicial)
+const UserController = require('../controllers/UserController');
+const UserService = require('../services/UserService');
 
-// CREATE: Ruta para crear un nuevo usuario (Registrarse)
-router.post('/', userController.createUser);
+// 2. INSTANCIAR (Cableado de dependencias)
+const userService = new UserService();
+const userController = new UserController(userService); // Inyectamos el servicio
 
-// READ: Ruta para obtener todos los usuarios (en un futuro para administradores)
-router.get('/', userController.getUsers);
+// --- Rutas de Autenticación ---
 
-// READ: Ruta para obtener un usuario específico por su ID
-router.get('/:id', userController.getUserById);
-
-// UPDATE: Ruta para actualizar un usuario por su ID
-router.put('/:id', userController.updateUser);
-
-// DELETE: Ruta para eliminar un usuario por su ID
-router.delete('/:id', userController.deleteUser);
-
+// Login (Pública)
 router.post('/login', userController.loginUser);
 
+// Registro / Crear Usuario (Pública)
+router.post('/', userController.createUser); 
+
+
+// --- Rutas del CRUD de Usuarios (Protegidas) ---
+
+// READ: Obtener todos (Solo admins deberían poder, o usuarios autenticados)
+router.get('/', auth, userController.getUsers);
+
+// READ: Obtener un usuario por ID
+router.get('/:id', auth, userController.getUserById);
+
+// UPDATE: Actualizar usuario
+router.put('/:id', auth, userController.updateUser);
+
+// DELETE: Eliminar usuario
+router.delete('/:id', auth, userController.deleteUser);
 
 module.exports = router;
