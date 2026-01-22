@@ -1,35 +1,31 @@
 const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/auth');
+const MatchController = require('../controllers/MatchController');
 const adminAuth = require('../middleware/adminAuth');
 
-// 1. IMPORTAR LAS CLASES (Usa Mayúscula inicial)
-const MatchController = require('../controllers/MatchController'); // <--- CAMBIO AQUÍ
-const MatchService = require('../services/MatchService');
+// PRINCIPIO DIP: Las dependencias son inyectadas como parámetros
+module.exports = (matchService, auth) => {
+  const router = express.Router();
+  
+  // Instanciar el controlador con el servicio inyectado
+  const matchController = new MatchController(matchService);
 
-// 2. INSTANCIAR (CREAR LOS OBJETOS)
-const matchService = new MatchService();
+  // --- Rutas del CRUD de Partidos ---
 
-// Inyectamos el servicio en el controlador
-// Aquí usamos 'matchController' (minúscula) para la instancia
-const matchController = new MatchController(matchService); // <--- CAMBIO AQUÍ
+  // Rutas Específicas (Deben ir ANTES de las rutas dinámicas como /:id)
+  router.get('/mis-partidos', auth, matchController.getMyMatches);
+  router.delete('/admin/:id', auth, adminAuth, matchController.deleteAnyMatch);
+  router.delete('/:id/participants/:userId', auth, adminAuth, matchController.removeParticipant);
 
-// --- Rutas del CRUD de Partidos ---
+  // Rutas Generales
+  router.get('/', matchController.getMatches);
+  router.post('/', auth, matchController.createMatch);
 
-// Rutas Específicas (Deben ir ANTES de las rutas dinámicas como /:id)
-router.get('/mis-partidos', auth, matchController.getMyMatches);
-router.delete('/admin/:id', auth, adminAuth, matchController.deleteAnyMatch);
-router.delete('/:id/participants/:userId', auth, adminAuth, matchController.removeParticipant); // Admin borrar participante
+  // Rutas Dinámicas (Con :id)
+  router.get('/:id', matchController.getMatchById);
+  router.put('/:id', auth, matchController.updateMatch);
+  router.delete('/:id', auth, matchController.deleteMatch);
+  router.post('/:id/join', auth, matchController.joinMatch);
+  router.post('/:id/leave', auth, matchController.leaveMatch);
 
-// Rutas Generales
-router.get('/', matchController.getMatches);
-router.post('/', auth, matchController.createMatch);
-
-// Rutas Dinámicas (Con :id)
-router.get('/:id', matchController.getMatchById);
-router.put('/:id', auth, matchController.updateMatch);
-router.delete('/:id', auth, matchController.deleteMatch);
-router.post('/:id/join', auth, matchController.joinMatch);
-router.post('/:id/leave', auth, matchController.leaveMatch);
-
-module.exports = router;
+  return router;
+};
