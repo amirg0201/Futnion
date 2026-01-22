@@ -2,12 +2,15 @@ const express = require('express');
 const UserController = require('../controllers/UserController');
 const adminAuth = require('../middleware/adminAuth');
 
-// PRINCIPIO DIP: Las dependencias son inyectadas como parámetros
-module.exports = (userService, auth) => {
+/**
+ * PRINCIPIO DIP: Las dependencias son inyectadas como parámetros
+ * Esto hace que las rutas sean completamente agnósticas a la implementación
+ */
+module.exports = (userAuthService, userCRUDService, auth) => {
   const router = express.Router();
   
-  // Instanciar el controlador con el servicio inyectado
-  const userController = new UserController(userService);
+  // PRINCIPIO DIP: Instanciar el controlador con los servicios inyectados
+  const userController = new UserController(userAuthService, userCRUDService);
 
   // --- Rutas de Autenticación ---
 

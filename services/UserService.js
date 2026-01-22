@@ -73,7 +73,6 @@ class UserService extends IUserService {
     }
 
     async updateUser(id, data) {
-        // OJO: Si actualizan la contraseña aquí, deberías hashearla de nuevo.
         // Por ahora asumimos actualización de datos básicos.
         const user = await User.findByIdAndUpdate(id, data, { new: true, runValidators: true }).select('-password');
         if (!user) throw new Error('Usuario no encontrado');

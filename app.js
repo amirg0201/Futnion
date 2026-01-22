@@ -1,12 +1,19 @@
 // app.js
-// Responsabilidad única: Configurar la aplicación Express
+// Responsabilidad única: Configurar la aplicación Express con inyección de dependencias
 
 const express = require('express');
 const { setupMiddlewares } = require('./config/middlewareConfig');
+
+// PRINCIPIO DIP: Importar servicios (no instanciarlos aquí, los inyectaremos)
+const PasswordService = require('./services/PasswordService');
+const TokenService = require('./services/TokenService');
+const UserAuthService = require('./services/UserAuthService');
+const UserCRUDService = require('./services/UserCRUDService');
+const MatchValidationService = require('./services/MatchValidationService');
+const MatchParticipantService = require('./services/MatchParticipantService');
+const MatchCRUDService = require('./services/MatchCRUDService');
 const UserController = require('./controllers/UserController');
-const UserService = require('./services/UserService');
 const MatchController = require('./controllers/MatchController');
-const MatchService = require('./services/MatchService');
 const authMiddleware = require('./middleware/auth');
 
 const createApp = () => {
@@ -15,25 +22,52 @@ const createApp = () => {
   // 1. Configurar middlewares (CORS, JSON parsing, etc.)
   setupMiddlewares(app);
 
-  // 2. Instanciar servicios y controladores (Inyección de dependencias)
-  const userService = new UserService();
-  const userController = new UserController(userService);
+  // ====================================================
+  // 2. INSTANCIAR SERVICIOS CON INYECCIÓN DE DEPENDENCIAS
+  // PRINCIPIO DIP: Cada servicio recibe sus dependencias
+  // ====================================================
+
+  // Servicios de Usuario
+  const passwordService = new PasswordService();
+  const tokenService = new TokenService();
   
-  const matchService = new MatchService();
-  const matchController = new MatchController(matchService);
+  // PRINCIPIO DIP: UserAuthService recibe passwordService y tokenService inyectados
+  const userAuthService = new UserAuthService(passwordService, tokenService);
+  
+  const userCRUDService = new UserCRUDService();
 
-  // 3. Crear el middleware de autenticación con el servicio inyectado
-  const auth = authMiddleware(userService);
+  // Servicios de Partido
+  const matchValidationService = new MatchValidationService();
+  
+  // PRINCIPIO DIP: MatchParticipantService recibe matchValidationService inyectado
+  const matchParticipantService = new MatchParticipantService(matchValidationService);
+  
+  // PRINCIPIO DIP: MatchCRUDService recibe matchValidationService inyectado
+  const matchCRUDService = new MatchCRUDService(matchValidationService);
 
-  // 4. Importar rutas
+  // ====================================================
+  // 3. INSTANCIAR CONTROLADORES CON INYECCIÓN DE DEPENDENCIAS
+  // PRINCIPIO DIP: Cada controlador recibe los servicios que necesita
+  // ====================================================
+
+  // PRINCIPIO DIP: UserController recibe userAuthService y userCRUDService inyectados
+  const userController = new UserController(userAuthService, userCRUDService);
+  
+  // PRINCIPIO DIP: MatchController recibe matchCRUDService y matchParticipantService inyectados
+  const matchController = new MatchController(matchCRUDService, matchParticipantService);
+
+  // 4. Crear el middleware de autenticación con el servicio inyectado
+  const auth = authMiddleware(userCRUDService);
+
+  // 5. Importar rutas
   const userRoutes = require('./routes/UserRoutes');
   const matchRoutes = require('./routes/MatchRoutes');
 
-  // 5. Usar rutas
-  app.use('/api/usuarios', userRoutes(userService, auth));
-  app.use('/api/partidos', matchRoutes(matchService, auth));
+  // 6. Usar rutas con dependencias inyectadas
+  app.use('/api/usuarios', userRoutes(userAuthService, userCRUDService, auth));
+  app.use('/api/partidos', matchRoutes(matchCRUDService, matchParticipantService, auth));
 
-  // 6. Ruta de prueba
+  // 7. Ruta de prueba
   app.get('/', (req, res) => {
     res.json({ message: 'API de Futnion funcionando!' });
   });

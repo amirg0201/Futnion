@@ -2,12 +2,15 @@ const express = require('express');
 const MatchController = require('../controllers/MatchController');
 const adminAuth = require('../middleware/adminAuth');
 
-// PRINCIPIO DIP: Las dependencias son inyectadas como parámetros
-module.exports = (matchService, auth) => {
+/**
+ * PRINCIPIO DIP: Las dependencias son inyectadas como parámetros
+ * Esto hace que las rutas sean completamente agnósticas a la implementación
+ */
+module.exports = (matchCRUDService, matchParticipantService, auth) => {
   const router = express.Router();
   
-  // Instanciar el controlador con el servicio inyectado
-  const matchController = new MatchController(matchService);
+  // PRINCIPIO DIP: Instanciar el controlador con los servicios inyectados
+  const matchController = new MatchController(matchCRUDService, matchParticipantService);
 
   // --- Rutas del CRUD de Partidos ---
 
