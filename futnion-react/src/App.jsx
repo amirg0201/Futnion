@@ -1,19 +1,20 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
-import { ProtectedRoute } from './components/protectedRoute'; // <-- Importamos el guardia
-import LoginPage from './pages/LoginPage';
+import { ProtectedRoute } from './components/protectedRoute';
+import Navbar from './components/Navbar';
 
-// Home temporal (Luego haremos el real)
-const HomePage = () => (
-    <div style={{ padding: '20px' }}>
-        <h1>🏠 ¡Bienvenido al Home de React!</h1>
-        <p>Si ves esto, es porque estás logueado.</p>
-        <button onClick={() => {
-            localStorage.clear(); 
-            window.location.reload();
-        }}>Cerrar Sesión (Forzado)</button>
-    </div>
+// Pages
+import LoginPage from './pages/LoginPage';
+import HomePage from './pages/HomePage'; // (Donde listas todos)
+import CreateMatchPage from './pages/CreateMatchPage';
+import DashboardPage from './pages/DashboardPage';
+
+// Layout para páginas internas
+const Layout = ({ children }) => (
+  <>
+    <Navbar />
+    <div className="container" style={{ padding: '20px' }}>{children}</div>
+  </>
 );
 
 function App() {
@@ -21,21 +22,14 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-            {/* Ruta Pública: Cualquiera puede entrar */}
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Ruta Privada: Protegida por el guardia */}
-            <Route 
-                path="/" 
-                element={
-                    <ProtectedRoute>
-                        <HomePage />
-                    </ProtectedRoute>
-                } 
-            />
-            
-            {/* Redirección por defecto */}
-            <Route path="*" element={<Navigate to="/" />} />
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Rutas Protegidas */}
+          <Route path="/" element={<ProtectedRoute><Layout><HomePage /></Layout></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardPage /></Layout></ProtectedRoute>} />
+          <Route path="/crear" element={<ProtectedRoute><Layout><CreateMatchPage /></Layout></ProtectedRoute>} />
+          
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
