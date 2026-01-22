@@ -33,10 +33,16 @@ class MatchParticipantService {
             // Validar que puede unirse
             await this.matchValidationService.validateCanJoinMatch(match, userId);
 
-            // Agregar participante (convertir a ObjectId)
-            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
+            // Normalizar para comparación consistente
+            const normalizeId = (id) => {
+                if (!id) return null;
+                return id._id ? id._id.toString() : id.toString();
+            };
+
+            const userIdNormalized = normalizeId(userId);
+            const participantIds = match.participants.map(p => normalizeId(p));
             
-            if (!participantIds.includes(userId)) {
+            if (!participantIds.includes(userIdNormalized)) {
                 match.participants.push(userId);
                 const updatedMatch = await this.matchRepository.update(matchId, {
                     participants: match.participants
@@ -79,10 +85,17 @@ class MatchParticipantService {
             // PRINCIPIO DIP: Delega validaciones al servicio inyectado
             await this.matchValidationService.validateCanLeaveMatch(match, userId);
 
+            // Normalizar para comparación consistente
+            const normalizeId = (id) => {
+                if (!id) return null;
+                return id._id ? id._id.toString() : id.toString();
+            };
+
+            const userIdNormalized = normalizeId(userId);
+
             // Si validaciones pasaron, remueve el participante
-            // Convertir ObjectIds a string para comparación correcta
             const updatedParticipants = match.participants.filter(
-                p => (p._id?.toString() || p.toString()) !== userId
+                p => normalizeId(p) !== userIdNormalized
             );
 
             const updatedMatch = await this.matchRepository.update(matchId, {
@@ -120,9 +133,16 @@ class MatchParticipantService {
 
             if (!match) throw new Error('Partido no encontrado');
 
-            // Convertir ObjectIds a string para comparación correcta
+            // Normalizar para comparación consistente
+            const normalizeId = (id) => {
+                if (!id) return null;
+                return id._id ? id._id.toString() : id.toString();
+            };
+
+            const userIdNormalized = normalizeId(userIdToRemove);
+
             const updatedParticipants = match.participants.filter(
-                p => (p._id?.toString() || p.toString()) !== userIdToRemove
+                p => normalizeId(p) !== userIdNormalized
             );
 
             const updatedMatch = await this.matchRepository.update(matchId, {

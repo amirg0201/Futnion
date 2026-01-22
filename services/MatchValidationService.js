@@ -20,16 +20,23 @@ class MatchValidationService {
      */
     async validateCanJoinMatch(match, userId) {
         try {
+            // Normalizar IDs a strings para comparación consistente
+            const normalizeId = (id) => {
+                if (!id) return null;
+                return id._id ? id._id.toString() : id.toString();
+            };
+
+            const userIdNormalized = normalizeId(userId);
+            const creatorId = normalizeId(match.creator);
+            const participantIds = match.participants.map(p => normalizeId(p));
+
             // Validación 1: Verificar que el usuario no es el creador
-            const creatorId = match.creator._id?.toString() || match.creator.toString();
-            if (creatorId === userId) {
+            if (creatorId === userIdNormalized) {
                 throw new Error('Ya eres el creador de este partido');
             }
 
             // Validación 2: Verificar que el usuario no está ya inscrito
-            // Convertir todos los ObjectIds a string para comparación correcta
-            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
-            if (participantIds.includes(userId)) {
+            if (participantIds.includes(userIdNormalized)) {
                 throw new Error('Ya estás inscrito en este partido');
             }
 
@@ -54,9 +61,17 @@ class MatchValidationService {
      */
     async validateCanLeaveMatch(match, userId) {
         try {
+            // Normalizar IDs a strings para comparación consistente
+            const normalizeId = (id) => {
+                if (!id) return null;
+                return id._id ? id._id.toString() : id.toString();
+            };
+
+            const userIdNormalized = normalizeId(userId);
+            const participantIds = match.participants.map(p => normalizeId(p));
+
             // Validación 1: Verificar que el usuario está inscrito
-            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
-            if (!participantIds.includes(userId)) {
+            if (!participantIds.includes(userIdNormalized)) {
                 throw new Error('No estás inscrito en este partido');
             }
 
@@ -85,8 +100,14 @@ class MatchValidationService {
      * @returns {boolean} - True si es el creador
      */
     isCreator(match, userId) {
-        const creatorId = match.creator._id?.toString() || match.creator.toString();
-        return creatorId === userId;
+        const normalizeId = (id) => {
+            if (!id) return null;
+            return id._id ? id._id.toString() : id.toString();
+        };
+        
+        const creatorId = normalizeId(match.creator);
+        const userIdNormalized = normalizeId(userId);
+        return creatorId === userIdNormalized;
     }
 }
 
