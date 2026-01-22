@@ -53,5 +53,3 @@ export const deleteMatchAPI = async (matchId) => {
     }
     return await response.json();
 }; 
-
-// ... (Mantén las otras funciones: getMatches, join, etc.)
