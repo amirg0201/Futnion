@@ -3,9 +3,9 @@
  * OBSERVER PATTERN: Sistema centralizado de eventos
  * 
  * BENEFICIOS:
- * ✅ Desacoplamiento: joinMatch no conoce notificaciones
- * ✅ Extensible: agregar listeners sin modificar código existente
- * ✅ Auditoría, logging, notificaciones sin tocar lógica principal
+ * joinMatch no conoce notificaciones
+ * agregar listeners sin modificar código existente
+ * Auditoría, logging, notificaciones sin tocar lógica principal
  */
 
 const EventEmitter = require('events');
