@@ -68,17 +68,34 @@ class MatchParticipantService {
      */
     async leaveMatch(matchId, userId) {
         try {
-            const match = await Match.findById(matchId);
+            const match = this.matchRepository
+                ? await this.matchRepository.findById(matchId)
+                : null;
+
             if (!match) throw new Error('Partido no encontrado');
 
             // PRINCIPIO DIP: Delega validaciones al servicio inyectado
             await this.matchValidationService.validateCanLeaveMatch(match, userId);
 
             // Si validaciones pasaron, remueve el participante
-            match.participants = match.participants.filter(
+            const updatedParticipants = match.participants.filter(
                 p => p.toString() !== userId
             );
-            return await match.save();
+
+            const updatedMatch = await this.matchRepository.update(matchId, {
+                participants: updatedParticipants
+            });
+
+            // Emitir evento de salida
+            if (this.eventEmitter) {
+                this.eventEmitter.emit('match:left', {
+                    matchId: matchId,
+                    userId: userId,
+                    timestamp: new Date()
+                });
+            }
+
+            return updatedMatch;
         } catch (error) {
             throw new Error(`Error al abandonar el partido: ${error.message}`);
         }
@@ -94,13 +111,30 @@ class MatchParticipantService {
      */
     async removeParticipant(matchId, userIdToRemove) {
         try {
-            const match = await Match.findById(matchId);
+            const match = this.matchRepository
+                ? await this.matchRepository.findById(matchId)
+                : null;
+
             if (!match) throw new Error('Partido no encontrado');
 
-            match.participants = match.participants.filter(
+            const updatedParticipants = match.participants.filter(
                 p => p.toString() !== userIdToRemove
             );
-            return await match.save();
+
+            const updatedMatch = await this.matchRepository.update(matchId, {
+                participants: updatedParticipants
+            });
+
+            // Emitir evento de remoción
+            if (this.eventEmitter) {
+                this.eventEmitter.emit('participant:removed', {
+                    matchId: matchId,
+                    userId: userIdToRemove,
+                    timestamp: new Date()
+                });
+            }
+
+            return updatedMatch;
         } catch (error) {
             throw new Error(
                 `Error al remover participante: ${error.message}`
@@ -111,15 +145,16 @@ class MatchParticipantService {
     /**
      * Obtiene todos los partidos a los que un usuario se ha apuntado
      * PRINCIPIO SRP: Búsqueda específica de participación
+     * PRINCIPIO REPOSITORY: Delega búsqueda al repositorio
      * @param {string} userId - ID del usuario
      * @returns {Promise<array>} - Array de partidos
      */
     async getMyMatches(userId) {
         try {
-            return await Match.find({ participants: userId }).populate(
-                'creator',
-                'username fullName'
-            );
+            const matches = this.matchRepository
+                ? await this.matchRepository.findByParticipant(userId)
+                : [];
+            return matches;
         } catch (error) {
             throw new Error(
                 `Error al obtener tus partidos: ${error.message}`
