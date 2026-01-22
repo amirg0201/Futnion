@@ -83,8 +83,15 @@ class UserAuthService {
                 throw new Error('Credenciales inválidas');
             }
 
-            // Generar token
-            const token = this.tokenService.generateToken({ userId: user._id });
+            // Generar token con estructura esperada por auth middleware
+            const token = this.tokenService.generateToken({
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    username: user.username,
+                    role: user.role
+                }
+            });
 
             // Emitir evento de login
             if (this.eventEmitter) {
