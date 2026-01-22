@@ -33,8 +33,10 @@ class MatchParticipantService {
             // Validar que puede unirse
             await this.matchValidationService.validateCanJoinMatch(match, userId);
 
-            // Agregar participante
-            if (!match.participants.includes(userId)) {
+            // Agregar participante (convertir a ObjectId)
+            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
+            
+            if (!participantIds.includes(userId)) {
                 match.participants.push(userId);
                 const updatedMatch = await this.matchRepository.update(matchId, {
                     participants: match.participants
@@ -45,7 +47,7 @@ class MatchParticipantService {
                     this.eventEmitter.emitMatchJoined(updatedMatch, userId);
 
                     // Si el partido está lleno, emitir evento especial
-                    if (updatedMatch.participants.length === updatedMatch.maxParticipants) {
+                    if (updatedMatch.participants.length === updatedMatch.requiredPlayers) {
                         this.eventEmitter.emitMatchFull(updatedMatch);
                     }
                 }
@@ -78,8 +80,9 @@ class MatchParticipantService {
             await this.matchValidationService.validateCanLeaveMatch(match, userId);
 
             // Si validaciones pasaron, remueve el participante
+            // Convertir ObjectIds a string para comparación correcta
             const updatedParticipants = match.participants.filter(
-                p => p.toString() !== userId
+                p => (p._id?.toString() || p.toString()) !== userId
             );
 
             const updatedMatch = await this.matchRepository.update(matchId, {
@@ -117,8 +120,9 @@ class MatchParticipantService {
 
             if (!match) throw new Error('Partido no encontrado');
 
+            // Convertir ObjectIds a string para comparación correcta
             const updatedParticipants = match.participants.filter(
-                p => p.toString() !== userIdToRemove
+                p => (p._id?.toString() || p.toString()) !== userIdToRemove
             );
 
             const updatedMatch = await this.matchRepository.update(matchId, {

@@ -21,12 +21,15 @@ class MatchValidationService {
     async validateCanJoinMatch(match, userId) {
         try {
             // Validación 1: Verificar que el usuario no es el creador
-            if (match.creator.toString() === userId) {
+            const creatorId = match.creator._id?.toString() || match.creator.toString();
+            if (creatorId === userId) {
                 throw new Error('Ya eres el creador de este partido');
             }
 
             // Validación 2: Verificar que el usuario no está ya inscrito
-            if (match.participants.includes(userId)) {
+            // Convertir todos los ObjectIds a string para comparación correcta
+            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
+            if (participantIds.includes(userId)) {
                 throw new Error('Ya estás inscrito en este partido');
             }
 
@@ -52,7 +55,8 @@ class MatchValidationService {
     async validateCanLeaveMatch(match, userId) {
         try {
             // Validación 1: Verificar que el usuario está inscrito
-            if (!match.participants.some(p => p.toString() === userId)) {
+            const participantIds = match.participants.map(p => p._id?.toString() || p.toString());
+            if (!participantIds.includes(userId)) {
                 throw new Error('No estás inscrito en este partido');
             }
 
@@ -81,7 +85,8 @@ class MatchValidationService {
      * @returns {boolean} - True si es el creador
      */
     isCreator(match, userId) {
-        return match.creator.toString() === userId;
+        const creatorId = match.creator._id?.toString() || match.creator.toString();
+        return creatorId === userId;
     }
 }
 
