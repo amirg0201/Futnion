@@ -1,53 +1,57 @@
 // services/MatchCRUDService.js
-// PRINCIPIO SRP: Esta clase tiene UNA única responsabilidad: operaciones CRUD en partidos
-const Match = require('../models/Match');
+/**
+ * PRINCIPIO SRP: Operaciones CRUD en partidos
+ * PRINCIPIO DIP: Recibe dependencias inyectadas
+ * PRINCIPIO REPOSITORY: Delega acceso a datos al repositorio
+ * PRINCIPIO OBSERVER: Emite eventos cuando ocurren cambios
+ */
 
 class MatchCRUDService {
     /**
-     * PRINCIPIO SRP: Separación de responsabilidades
-     * Esta clase SOLO se encarga de operaciones CRUD
-     * No valida reglas de negocio, solo gestiona datos
-     * 
-     * PRINCIPIO DIP: Recibe MatchValidationService inyectado
-     * para validaciones de acceso (creador vs admin)
+     * Constructor con inyección de dependencias
+     * PRINCIPIO DIP: Recibe matchRepository, matchValidationService y eventEmitter
      */
-
-    constructor(matchValidationService) {
+    constructor(matchRepository, matchValidationService, eventEmitter = null) {
+        this.matchRepository = matchRepository;
         this.matchValidationService = matchValidationService;
+        this.eventEmitter = eventEmitter;
     }
 
     /**
      * Crea un nuevo partido
-     * PRINCIPIO SRP: Solo crea, sin validaciones complejas
-     * @param {object} matchData - Datos del nuevo partido
-     * @returns {Promise<object>} - Partido creado
+     * PRINCIPIO OBSERVER: Emite evento cuando se crea
      */
     async createMatch(matchData) {
         try {
-            const newMatch = new Match(matchData);
-            return await newMatch.save();
+            const newMatch = this.matchRepository
+                ? await this.matchRepository.create(matchData)
+                : null;
+
+            // Emitir evento
+            if (this.eventEmitter && newMatch) {
+                this.eventEmitter.emitMatchCreated(newMatch);
+            }
+
+            return newMatch;
         } catch (error) {
             throw new Error(`Error al crear partido: ${error.message}`);
         }
     }
 
     /**
-     * Obtiene todos los partidos disponibles
-     * PRINCIPIO SRP: Solo obtiene datos, sin filtros complejos
-     * @returns {Promise<array>} - Lista de todos los partidos
+     * Obtiene todos los partidos
+     * PRINCIPIO REPOSITORY: Delega al repositorio
      */
     async getAllMatches() {
         try {
-            return await Match.find()
-                .populate('creator', 'username fullName')
-                .sort({ MatchDate: 1 });
+            return await this.matchRepository.findAll();
         } catch (error) {
             throw new Error(`Error al obtener partidos: ${error.message}`);
         }
     }
 
     /**
-     * Obtiene un partido específico por ID
+     * Obtiene un partido por ID
      * @param {string} id - ID del partido
      * @returns {Promise<object>} - Datos del partido
      */

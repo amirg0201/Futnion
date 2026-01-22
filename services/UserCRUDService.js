@@ -1,22 +1,31 @@
 // services/UserCRUDService.js
-// PRINCIPIO SRP: Esta clase tiene UNA única responsabilidad: operaciones CRUD en usuarios
-const User = require('../models/User');
+/**
+ * PRINCIPIO SRP: Operaciones CRUD de usuarios
+ * PRINCIPIO DIP: Recibe UserRepository e EventEmitter inyectados
+ * PRINCIPIO REPOSITORY: Delega acceso a datos al repositorio
+ * PRINCIPIO OBSERVER: Emite eventos cuando ocurren cambios
+ */
 
 class UserCRUDService {
     /**
-     * PRINCIPIO SRP: Separación de responsabilidades
-     * Esta clase SOLO se encarga de operaciones CRUD
-     * No maneja autenticación, tokens ni hashing
+     * Constructor con inyección de dependencias
+     * PRINCIPIO DIP: Recibe userRepository y eventEmitter
      */
+    constructor(userRepository, eventEmitter = null) {
+        this.userRepository = userRepository;
+        this.eventEmitter = eventEmitter;
+    }
 
     /**
      * Obtiene todos los usuarios (sin contraseñas)
-     * PRINCIPIO ISP: Solo retorna lo que se necesita
-     * @returns {Promise<array>} - Lista de usuarios sin contraseña
+     * PRINCIPIO SRP: Solo CRUD, sin validaciones complejas
+     * PRINCIPIO REPOSITORY: Delega al repositorio
+     * @returns {Promise<array>} - Lista de usuarios
      */
     async getAllUsers() {
         try {
-            return await User.find().select('-password');
+            const users = await this.userRepository.findAll();
+            return users.map(user => this._sanitizeUser(user));
         } catch (error) {
             throw new Error(`Error al obtener usuarios: ${error.message}`);
         }
@@ -24,14 +33,12 @@ class UserCRUDService {
 
     /**
      * Obtiene un usuario por ID
-     * @param {string} id - ID del usuario
-     * @returns {Promise<object>} - Datos del usuario
+     * PRINCIPIO REPOSITORY: Usa repositorio para acceso a datos
      */
     async getUserById(id) {
         try {
-            const user = await User.findById(id).select('-password');
-            if (!user) throw new Error('Usuario no encontrado');
-            return user;
+            const user = await this.userRepository.findById(id);
+            return this._sanitizeUser(user);
         } catch (error) {
             throw new Error(`Error al obtener usuario: ${error.message}`);
         }
@@ -39,21 +46,22 @@ class UserCRUDService {
 
     /**
      * Actualiza datos de un usuario
-     * PRINCIPIO SRP: Solo modifica los datos, sin validación de contraseña
-     * @param {string} id - ID del usuario
-     * @param {object} data - Datos a actualizar
-     * @returns {Promise<object>} - Usuario actualizado
+     * PRINCIPIO OBSERVER: Emite evento después de actualizar
      */
     async updateUser(id, data) {
         try {
-            // PRINCIPIO OCP: Fácil de extender para validaciones adicionales
-            const user = await User.findByIdAndUpdate(id, data, { 
-                new: true, 
-                runValidators: true 
-            }).select('-password');
+            const user = await this.userRepository.update(id, data);
             
-            if (!user) throw new Error('Usuario no encontrado');
-            return user;
+            // Emitir evento de actualización
+            if (this.eventEmitter) {
+                this.eventEmitter.emit('user:updated', {
+                    userId: user._id,
+                    email: user.email,
+                    timestamp: new Date(),
+                });
+            }
+            
+            return this._sanitizeUser(user);
         } catch (error) {
             throw new Error(`Error al actualizar usuario: ${error.message}`);
         }
@@ -61,13 +69,21 @@ class UserCRUDService {
 
     /**
      * Elimina un usuario
-     * @param {string} id - ID del usuario a eliminar
-     * @returns {Promise<object>} - Usuario eliminado
+     * PRINCIPIO OBSERVER: Emite evento cuando se elimina
      */
     async deleteUser(id) {
         try {
-            const user = await User.findByIdAndDelete(id);
-            if (!user) throw new Error('Usuario no encontrado');
+            const user = await this.userRepository.delete(id);
+            
+            // Emitir evento de eliminación
+            if (this.eventEmitter) {
+                this.eventEmitter.emit('user:deleted', {
+                    userId: user._id,
+                    email: user.email,
+                    timestamp: new Date(),
+                });
+            }
+            
             return user;
         } catch (error) {
             throw new Error(`Error al eliminar usuario: ${error.message}`);
@@ -76,16 +92,38 @@ class UserCRUDService {
 
     /**
      * Busca un usuario por email
-     * PRINCIPIO SRP: Método auxiliar específico para búsqueda
-     * @param {string} email - Email del usuario
-     * @returns {Promise<object|null>} - Usuario encontrado o null
+     * PRINCIPIO REPOSITORY: Delega al repositorio
      */
     async getUserByEmail(email) {
         try {
-            return await User.findOne({ email });
+            const user = await this.userRepository.findByEmail(email);
+            return this._sanitizeUser(user);
         } catch (error) {
-            throw new Error(`Error al buscar usuario por email: ${error.message}`);
+            throw new Error(`Error al buscar usuario: ${error.message}`);
         }
+    }
+
+    /**
+     * Verifica si existe un usuario con ese email
+     * PRINCIPIO REPOSITORY: Usa método específico del repositorio
+     */
+    async existsByEmail(email) {
+        try {
+            return await this.userRepository.existsByEmail(email);
+        } catch (error) {
+            throw new Error(`Error al verificar email: ${error.message}`);
+        }
+    }
+
+    /**
+     * Sanitizar usuario: eliminar contraseña
+     * PRINCIPIO SRP: Método privado para lógica de seguridad
+     */
+    _sanitizeUser(user) {
+        if (!user) return null;
+        const userObj = user.toObject?.() || user;
+        delete userObj.password;
+        return userObj;
     }
 }
 
